@@ -977,4 +977,13 @@
         {% endfor %}
     </DeniedAdminServices>
 
+    {% if server.webapp.watched_resource_reload_enabled is defined %}
+    <!-- Reload a deployed webapp's context when a watched resource (WEB-INF/web.xml, WEB-INF/lib,
+         WEB-INF/classes) is modified at runtime. Set false to stop the spurious reload seen on
+         NFS-shared, multi-node deployments. Unrelated to JSP hot deployment. -->
+    <WebappManagement>
+        <WatchedResourceReloadEnabled>{{server.webapp.watched_resource_reload_enabled}}</WatchedResourceReloadEnabled>
+    </WebappManagement>
+    {% endif %}
+
 </Server>
