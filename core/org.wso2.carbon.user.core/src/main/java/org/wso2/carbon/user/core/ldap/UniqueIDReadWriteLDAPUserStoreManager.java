@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2019, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2019-2026, WSO2 LLC. (http://www.wso2.com).
  *
- * WSO2 Inc. licenses this file to you under the Apache License,
+ * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License.
  * You may obtain a copy of the License at
@@ -84,6 +84,7 @@ import javax.sql.DataSource;
 import static org.wso2.carbon.user.core.UserStoreConfigConstants.DEFAULT_CONNECTION_RETRY_COUNT;
 import static org.wso2.carbon.user.core.UserStoreConfigConstants.GROUP_ID_ATTRIBUTE;
 import static org.wso2.carbon.user.core.constants.UserCoreErrorConstants.ErrorMessages.ERROR_CODE_DUPLICATE_WHILE_WRITING_TO_DATABASE;
+import static org.wso2.carbon.user.core.constants.UserCoreErrorConstants.ErrorMessages.ERROR_CODE_USER_ALREADY_EXISTS;
 import static org.wso2.carbon.user.core.constants.UserCoreErrorConstants.ErrorMessages.ERROR_EMPTY_GROUP_ID;
 import static org.wso2.carbon.user.core.constants.UserCoreErrorConstants.ErrorMessages.ERROR_EMPTY_GROUP_NAME;
 import static org.wso2.carbon.user.core.constants.UserCoreErrorConstants.ErrorMessages.ERROR_NO_GROUP_FOUND_WITH_ID;
@@ -354,16 +355,11 @@ public class UniqueIDReadWriteLDAPUserStoreManager extends UniqueIDReadOnlyLDAPU
                     + userName;
 
             if (e instanceof NameAlreadyBoundException) {
-                // If concurrent requests with same username bypass the existing user validation check, it can throw an
-                // exception regarding unique key violation. It should be caught and rethrown as a client exception.
-                if (log.isDebugEnabled()) {
-                    log.debug(errorMessage, e);
-                }
-
-                throw new UserStoreClientException(
-                        UserCoreErrorConstants.ErrorMessages.ERROR_CODE_USER_ALREADY_EXISTS.getCode() + " : " +
-                                UserCoreErrorConstants.ErrorMessages.ERROR_CODE_USER_ALREADY_EXISTS.getMessage(),
-                        UserCoreErrorConstants.ErrorMessages.ERROR_CODE_USER_ALREADY_EXISTS.getCode());
+                // If concurrent requests with the same username bypass the existing user validation check, it can throw
+                // a NameAlreadyBoundException. It should be caught and rethrown with the appropriate error code.
+                errorMessage = ERROR_CODE_USER_ALREADY_EXISTS.getCode() + " - " +
+                        String.format(ERROR_CODE_USER_ALREADY_EXISTS.getMessage(), "");
+                throw new UserStoreException(errorMessage, ERROR_CODE_USER_ALREADY_EXISTS.getCode(), e);
             } else {
                 log.error("Failed to persist user: " + userName + ". Error: " + e.getMessage());
                 throw new UserStoreException(errorMessage, e);
