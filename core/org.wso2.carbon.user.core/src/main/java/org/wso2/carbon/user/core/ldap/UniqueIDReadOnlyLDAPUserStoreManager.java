@@ -1854,6 +1854,9 @@ public class UniqueIDReadOnlyLDAPUserStoreManager extends ReadOnlyLDAPUserStoreM
                         generatePaginatedList(pageIndex, offset, pageSize, tempGroupList, finalGroups);
                         int needMore = pageSize - finalGroups.size();
                         if (needMore == 0) {
+                            releasePagedSearchSession(ldapContext,
+                                    parseControls(ldapContext.getResponseControls()), searchBase, searchFilter,
+                                    searchControls, sortAttribute);
                             break;
                         }
                     }
@@ -2235,6 +2238,8 @@ public class UniqueIDReadOnlyLDAPUserStoreManager extends ReadOnlyLDAPUserStoreM
                     generatePaginatedGroupsList(pageIndex, offset, pageSize, tempGroupsList, groups);
                     int needMore = pageSize - groups.size();
                     if (needMore == 0) {
+                        releasePagedSearchSession(ldapContext, parseControls(ldapContext.getResponseControls()),
+                                searchBase, groupFilter, searchControls, sortingProperty);
                         break;
                     }
                     cookie = parseControls(ldapContext.getResponseControls());
@@ -3290,6 +3295,29 @@ public class UniqueIDReadOnlyLDAPUserStoreManager extends ReadOnlyLDAPUserStoreM
     }
 
     /**
+     * Release any outstanding server-side sorted/paged search session (RFC 2696 cancellation) before the LDAP
+     * context is returned to the JNDI connection pool, so a reused connection does not carry a still-active sort.
+     */
+    private void releasePagedSearchSession(LdapContext ldapContext, byte[] cookie, String searchBase,
+                                           String searchFilter, SearchControls searchControls, String sortAttribute) {
+
+        if (cookie == null || cookie.length == 0) {
+            return;
+        }
+        try {
+            ldapContext.setRequestControls(new Control[]{new PagedResultsControl(0, cookie, Control.CRITICAL),
+                    new SortControl(sortAttribute, Control.NONCRITICAL)});
+            JNDIUtil.closeNamingEnumeration(
+                    ldapContext.search(escapeDNForSearch(searchBase), searchFilter, searchControls));
+        } catch (NamingException | IOException e) {
+            if (log.isDebugEnabled()) {
+                log.debug("Error while releasing the outstanding paged search session before returning the LDAP "
+                        + "context to the connection pool.", e);
+            }
+        }
+    }
+
+    /**
      * Do LDAP paginated search and return user objects as a list.
      *
      * @param ldapContext             LDAP connection context.
@@ -3402,12 +3430,17 @@ public class UniqueIDReadOnlyLDAPUserStoreManager extends ReadOnlyLDAPUserStoreM
                              */
                             users = membershipGroupFilterPostProcessing(isUsernameFiltering, isClaimFiltering,
                                     expressionConditions, tempUsersList);
+                            releasePagedSearchSession(ldapContext, parseControls(ldapContext.getResponseControls()),
+                                    searchBase, searchFilter, searchControls, userNameAttribute);
                             break;
                         } else {
                             // Handle pagination depending on given offset, i.e. start index.
                             generatePaginatedUserList(pageIndex, offset, pageSize, tempUsersList, users);
                             int needMore = pageSize - users.size();
                             if (needMore == 0) {
+                                releasePagedSearchSession(ldapContext,
+                                        parseControls(ldapContext.getResponseControls()), searchBase, searchFilter,
+                                        searchControls, userNameAttribute);
                                 break;
                             }
                         }
