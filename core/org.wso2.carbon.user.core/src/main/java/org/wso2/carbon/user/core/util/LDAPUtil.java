@@ -164,14 +164,36 @@ public class LDAPUtil {
         String derivedTimeStampPattern = LDAPUtil.deriveTimestampFormat(dateTimestamp);
         if (StringUtils.isNotBlank(derivedTimeStampPattern)) {
             try {
-                return OffsetDateTime.parse(dateTimestamp, DateTimeFormatter.ofPattern(derivedTimeStampPattern))
-                        .toInstant()
-                        .toString();
+                return convertTimestamp(dateTimestamp, derivedTimeStampPattern);
             } catch (DateTimeParseException e) {
                 throw new UserStoreException("Invalid timestamp format for pattern: " + derivedTimeStampPattern, e);
             }
         }
         throw new UserStoreException("Unsupported LDAP timestamp format: " + dateTimestamp);
+    }
+
+    private static String convertTimestamp(String dateTimestamp, String derivedTimeStampPattern)
+            throws DateTimeParseException {
+
+        if ("uuuuMMddHHmm,SX".equals(derivedTimeStampPattern) || "uuuuMMddHHmm.SX".equals(derivedTimeStampPattern)) {
+            /*
+             * RFC 4517 Generalized Time: when the minute component is the last time component,
+             * the fraction is a fraction of a MINUTE. DateTimeFormatter has no pattern letter for
+             * fraction-of-minute ('S' is fraction-of-second), so convert it to whole seconds
+             * explicitly. One fraction digit d => d * 6 seconds, always a whole number.
+             */
+            String base = dateTimestamp.substring(0, 12);
+            int seconds = (dateTimestamp.charAt(13) - '0') * 6;
+            String zone = dateTimestamp.substring(14);
+
+            dateTimestamp = String.format("%s%02d%s", base, seconds, zone);
+            // Update the pattern to reflect the new format
+            derivedTimeStampPattern = dateTimestamp.contains(",") ? "uuuuMMddHHmmss,SX" : "uuuuMMddHHmmss.SX";
+        }
+
+        return OffsetDateTime.parse(dateTimestamp, DateTimeFormatter.ofPattern(derivedTimeStampPattern))
+                .toInstant()
+                .toString();
     }
 
     /**
