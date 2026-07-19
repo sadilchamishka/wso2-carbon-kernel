@@ -23,8 +23,9 @@ import org.testng.annotations.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.wso2.carbon.user.api.RealmConfiguration;
-import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.util.LDAPUtil;
+
+import java.time.format.DateTimeParseException;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNull;
@@ -135,62 +136,91 @@ public class UniqueIDReadOnlyLDAPUserStoreManagerTest {
     }
 
     /**
-     * Test convertToStandardTimeFormat with potential timezone edge cases.
+     * Test convertToStandardTimeFormat with the RFC 4517 minute-precision fraction (12-digit base).
+     * When the minute is the last time component, a trailing fraction is a fraction of a MINUTE
+     * (one digit d => d * 6 whole seconds), not a fraction of a second.
      */
     @Test
-    public void testConvertToStandardTimeFormat_TimezoneEdgeCases() throws Exception {
+    public void testConvertToStandardTimeFormat_MinuteFraction() throws Exception {
 
-        // Configure realm config for testing - no custom pattern.
         when(realmConfig.getUserStoreProperty(dateAndTimePattern)).thenReturn(null);
 
-        // Test edge case: 2-digit timezone (might not be supported by current regex).
-        try {
-            LDAPUtil.convertToStandardTimeFormat(realmConfig, "20250813145607+05");
-            // If this doesn't throw an exception, it's supported.
-        } catch (UserStoreException e) {
-            // Expected - 2-digit timezone not supported by current regex.
-            assertTrue(e instanceof UserStoreException,
-                    "Should throw UserStoreException for 2-digit timezone");
-        }
+        assertEquals("2025-08-13T14:56:30Z",
+                LDAPUtil.convertToStandardTimeFormat(realmConfig, "202508131456,5Z"));
+        assertEquals("2025-08-13T14:56:30Z",
+                LDAPUtil.convertToStandardTimeFormat(realmConfig, "202508131456.5Z"));
+        // Offset must be preserved through the fraction-to-seconds splice (14:56:30 at +05:30 => 09:26:30Z).
+        assertEquals("2025-08-13T09:26:30Z",
+                LDAPUtil.convertToStandardTimeFormat(realmConfig, "202508131456,5+0530"));
+        assertEquals("2025-08-13T14:56:54Z",
+                LDAPUtil.convertToStandardTimeFormat(realmConfig, "202508131456,9Z"));
+        assertEquals("2025-08-13T14:56:00Z",
+                LDAPUtil.convertToStandardTimeFormat(realmConfig, "202508131456,0Z"));
     }
 
     /**
-     * Test convertToStandardTimeFormat with unsupported date format.
+     * Test convertToStandardTimeFormat with 2-digit (hour-only) timezone offsets, which RFC 4517 permits.
+     * These must be accepted across all supported shapes.
      */
     @Test
-    public void testConvertToStandardTimeFormat_UnsupportedFormat() throws Exception {
+    public void testConvertToStandardTimeFormat_TwoDigitOffset() throws Exception {
+
+        when(realmConfig.getUserStoreProperty(dateAndTimePattern)).thenReturn(null);
+
+        // 14:56:07 at +05:00 => 09:56:07Z.
+        assertEquals("2025-08-13T09:56:07Z",
+                LDAPUtil.convertToStandardTimeFormat(realmConfig, "20250813145607+05"));
+        // 14:56:07.123 at +05:00 => 09:56:07.123Z.
+        assertEquals("2025-08-13T09:56:07.123Z",
+                LDAPUtil.convertToStandardTimeFormat(realmConfig, "20250813145607.123+05"));
+        // Minute-fraction with 2-digit offset: 14:56:30 at +05:00 => 09:56:30Z.
+        assertEquals("2025-08-13T09:56:30Z",
+                LDAPUtil.convertToStandardTimeFormat(realmConfig, "202508131456,5+05"));
+    }
+
+    /**
+     * Test that convertToStandardTimeFormat throws a DateTimeParseException for an unsupported timestamp format,
+     * so the failure is surfaced (and aborts retrieval) rather than being silently swallowed.
+     */
+    @Test
+    public void testConvertToStandardTimeFormat_UnsupportedFormatThrows() throws Exception {
 
         // Configure realm config for testing - no custom pattern.
         when(realmConfig.getUserStoreProperty(dateAndTimePattern)).thenReturn(null);
 
         try {
-            // Test with unsupported format - should throw UserStoreException.
-            LDAPUtil.convertToStandardTimeFormat(realmConfig, "invalid-date-format");
-            // Should not reach here.
-            throw new AssertionError("Expected UserStoreException was not thrown");
-        } catch (UserStoreException e) {
+            LDAPUtil.convertToStandardTimeFormat(realmConfig, "invalid-timestamp");
+            throw new AssertionError("Expected DateTimeParseException was not thrown");
+        } catch (DateTimeParseException e) {
+            assertTrue(e.getMessage().contains("Unsupported LDAP timestamp format"),
+                    "Error message should mention unsupported timestamp format");
+        }
+
+        try {
+            LDAPUtil.convertToStandardTimeFormat(realmConfig, "202508131456075Z");
+            throw new AssertionError("Expected DateTimeParseException was not thrown");
+        } catch (DateTimeParseException e) {
             assertTrue(e.getMessage().contains("Unsupported LDAP timestamp format"),
                     "Error message should mention unsupported timestamp format");
         }
     }
 
     /**
-     * Test convertToStandardTimeFormat with invalid date format for custom pattern.
+     * Test that convertToStandardTimeFormat throws a DateTimeParseException when the value does not match the
+     * configured custom pattern.
      */
     @Test
-    public void testConvertToStandardTimeFormat_InvalidCustomPatternFormat() throws Exception {
+    public void testConvertToStandardTimeFormat_InvalidCustomPatternThrows() throws Exception {
 
         // Configure realm config with custom pattern.
         when(realmConfig.getUserStoreProperty(dateAndTimePattern)).thenReturn("uuuuMMddHHmmssX");
 
         try {
-            // Test with invalid format for the custom pattern - should throw UserStoreException.
             LDAPUtil.convertToStandardTimeFormat(realmConfig, "invalid-format-for-custom-pattern");
-            // Should not reach here.
-            throw new AssertionError("Expected UserStoreException was not thrown");
-        } catch (UserStoreException e) {
-            assertTrue(e.getMessage().contains("Invalid timestamp format"),
-                    "Error message should mention invalid timestamp format");
+            throw new AssertionError("Expected DateTimeParseException was not thrown");
+        } catch (DateTimeParseException e) {
+            assertTrue(e.getMessage().contains("could not be parsed"),
+                    "Error message should mention the timestamp could not be parsed");
         }
     }
 }

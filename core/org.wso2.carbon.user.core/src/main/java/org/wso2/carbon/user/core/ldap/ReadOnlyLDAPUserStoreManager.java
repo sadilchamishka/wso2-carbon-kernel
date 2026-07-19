@@ -17,7 +17,6 @@
  */
 package org.wso2.carbon.user.core.ldap;
 
-import org.apache.axis2.context.ConfigurationContext;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.ArrayUtils;
@@ -57,7 +56,6 @@ import org.wso2.carbon.user.core.util.LDAPUtil;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
 import org.wso2.carbon.utils.Secret;
 import org.wso2.carbon.utils.UnsupportedSecretTypeException;
-import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -65,6 +63,7 @@ import java.text.MessageFormat;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -4859,22 +4858,21 @@ public class ReadOnlyLDAPUserStoreManager extends AbstractUserStoreManager {
     protected void processAttributesAfterRetrieval(String userName, Map<String, String> userStorePropertyValues,
                                                    String profileName) {
 
-        try {
-            processAttributesAfterRetrieval(userStorePropertyValues);
-        } catch (UserStoreException e) {
-            logger.error("Error while processing attributes after retrieval with ID for userID: " + userName, e);
-        }
+        processAttributesAfterRetrieval(userStorePropertyValues);
     }
 
     @Override
     protected void processAttributesAfterRetrievalWithException(String userName, Map<String,
             String> userStorePropertyValues, String profileName) throws UserStoreException {
 
-        processAttributesAfterRetrieval(userStorePropertyValues);
+        try {
+            processAttributesAfterRetrieval(userName, userStorePropertyValues, profileName);
+        } catch (DateTimeParseException | IllegalArgumentException e) {
+            throw new UserStoreException("Invalid timestamp format", e);
+        }
     }
 
-    private void processAttributesAfterRetrieval(Map<String, String> userStorePropertyValues)
-            throws UserStoreException {
+    private void processAttributesAfterRetrieval(Map<String, String> userStorePropertyValues) {
 
         String timestampAttributesProperty = Optional.ofNullable(realmConfig
                 .getUserStoreProperty(UserStoreConfigConstants.timestampAttributes)).orElse(StringUtils.EMPTY);

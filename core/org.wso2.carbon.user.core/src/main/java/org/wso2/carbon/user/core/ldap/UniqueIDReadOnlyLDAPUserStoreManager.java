@@ -3214,21 +3214,20 @@ public class UniqueIDReadOnlyLDAPUserStoreManager extends ReadOnlyLDAPUserStoreM
     protected void processAttributesAfterRetrievalWithID(String userID, Map<String,
             String> userStorePropertyValues, String profileName) {
 
-        try {
-            processAttributesAfterRetrievalWithID(userStorePropertyValues);
-        } catch (UserStoreException e) {
-            logger.error("Error while processing attributes after retrieval with ID for userID: " + userID, e);
-        }
+        processAttributesAfterRetrievalWithID(userStorePropertyValues);
     }
 
     protected void processAttributesAfterRetrievalWithIDWithException(String userID, Map<String,
             String> userStorePropertyValues, String profileName) throws UserStoreException {
 
-        processAttributesAfterRetrievalWithID(userStorePropertyValues);
+        try {
+            processAttributesAfterRetrievalWithID(userID, userStorePropertyValues, profileName);
+        } catch (DateTimeParseException | IllegalArgumentException e) {
+            throw new UserStoreException("Invalid timestamp format", e);
+        }
     }
 
-    private void processAttributesAfterRetrievalWithID(Map<String,
-            String> userStorePropertyValues) throws UserStoreException {
+    private void processAttributesAfterRetrievalWithID(Map<String, String> userStorePropertyValues) {
 
         String timestampAttributesProperty = Optional.ofNullable(realmConfig
                 .getUserStoreProperty(UserStoreConfigConstants.timestampAttributes)).orElse(StringUtils.EMPTY);

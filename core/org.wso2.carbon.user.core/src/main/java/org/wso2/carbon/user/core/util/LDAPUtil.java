@@ -4,7 +4,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.user.api.RealmConfiguration;
-import org.wso2.carbon.user.core.UserCoreConstants;
 import org.wso2.carbon.user.core.UserStoreException;
 
 import javax.naming.NamingEnumeration;
@@ -23,17 +22,16 @@ import static org.wso2.carbon.user.core.ldap.LDAPConstants.DEFAULT_LDAP_TIME_FOR
 public class LDAPUtil {
 
     // Regex patterns for LDAP timestamp formats.
-    private static final Pattern NO_FRACTION_TIMESTAMP_PATTERN = Pattern.compile("^\\d{14}([-+]\\d{4}|Z)$");
+    private static final Pattern NO_FRACTION_TIMESTAMP_PATTERN =
+            Pattern.compile("^\\d{14}([-+]\\d{2}(\\d{2})?|Z)$");
     private static final Pattern THREE_DIGIT_FRACTION_TIMESTAMP_PATTERN =
-            Pattern.compile("^\\d{14}[,\\.]\\d{3}([-+]\\d{4}|Z)$");
+            Pattern.compile("^\\d{14}[,\\.]\\d{3}([-+]\\d{2}(\\d{2})?|Z)$");
     private static final Pattern TWO_DIGIT_FRACTION_TIMESTAMP_PATTERN =
-            Pattern.compile("^\\d{14}[,\\.]\\d{2}([-+]\\d{4}|Z)$");
-    private static final Pattern ONE_DIGIT_FRACTION_TIMESTAMP_PATTERN =
-            Pattern.compile("^\\d{12}[,\\.]\\d{1}([-+]\\d{4}|Z)$");
+            Pattern.compile("^\\d{14}[,\\.]\\d{2}([-+]\\d{2}(\\d{2})?|Z)$");
     private static final Pattern ONE_DIGIT_FRACTION_WITH_SECONDS_TIMESTAMP_PATTERN =
-            Pattern.compile("^\\d{14}[,\\.]\\d{1}([-+]\\d{4}|Z)$");
+            Pattern.compile("^\\d{14}[,\\.]\\d{1}([-+]\\d{2}(\\d{2})?|Z)$");
     private static final Pattern ONE_DIGIT_FRACTION_WITH_MINUTES_TIMESTAMP_PATTERN =
-            Pattern.compile("^\\d{12}[,\\.]\\d{1}([-+]\\d{4}|Z)$");
+            Pattern.compile("^\\d{12}[,\\.]\\d{1}([-+]\\d{2}(\\d{2})?|Z)$");
 
     private static Log log = LogFactory.getLog(LDAPUtil.class);
 
@@ -137,14 +135,17 @@ public class LDAPUtil {
     /**
      * Covert the LDAP timestamp format (Zulutime) to the generic timestamp supported by the identity server.
      * Refer to the "Generalized Time" section in the spec: https://www.ietf.org/rfc/rfc4517.txt.
+     * <p>
+     * Conversion failures (unsupported format, invalid value, or an invalid configured pattern) are surfaced as a
+     * {@link UserStoreException} so the caller can decide how to handle them.
      *
      * @param dateTimestamp Ldap timestamp.
      * @return Given timestamp in the standard format.
      * @throws UserStoreException If an error occurred while converting timestamp or if unsupported timestamp
      *                            configured in the userstore.
      */
-    public static String convertToStandardTimeFormat(RealmConfiguration realmConfig, String dateTimestamp)
-            throws UserStoreException {
+    public static String convertToStandardTimeFormat(RealmConfiguration realmConfig,
+            String dateTimestamp) {
 
         if (StringUtils.isBlank(dateTimestamp)) {
             return dateTimestamp;
@@ -152,28 +153,19 @@ public class LDAPUtil {
         String userstoreTimestampFormat = realmConfig.getUserStoreProperty(dateAndTimePattern);
         if (StringUtils.isNotBlank(userstoreTimestampFormat) &&
                 !StringUtils.equals(userstoreTimestampFormat, DEFAULT_LDAP_TIME_FORMATS_PATTERN)) {
-            try {
-                return OffsetDateTime.parse(dateTimestamp, DateTimeFormatter.ofPattern(userstoreTimestampFormat))
-                        .toInstant()
-                        .toString();
-            } catch (DateTimeParseException e) {
-                throw new UserStoreException("Invalid timestamp format for pattern: " + userstoreTimestampFormat, e);
-            }
+            return OffsetDateTime.parse(dateTimestamp, DateTimeFormatter.ofPattern(userstoreTimestampFormat))
+                    .toInstant()
+                    .toString();
         }
 
-        String derivedTimeStampPattern = LDAPUtil.deriveTimestampFormat(dateTimestamp);
-        if (StringUtils.isNotBlank(derivedTimeStampPattern)) {
-            try {
-                return convertTimestamp(dateTimestamp, derivedTimeStampPattern);
-            } catch (DateTimeParseException e) {
-                throw new UserStoreException("Invalid timestamp format for pattern: " + derivedTimeStampPattern, e);
-            }
+        String derivedTimeStampPattern = deriveTimestampFormat(dateTimestamp);
+        if (StringUtils.isBlank(derivedTimeStampPattern)) {
+            throw new DateTimeParseException("Unsupported LDAP timestamp format: " + dateTimestamp, dateTimestamp, 0);
         }
-        throw new UserStoreException("Unsupported LDAP timestamp format: " + dateTimestamp);
+        return convertTimestamp(dateTimestamp, derivedTimeStampPattern);
     }
 
-    private static String convertTimestamp(String dateTimestamp, String derivedTimeStampPattern)
-            throws DateTimeParseException {
+    private static String convertTimestamp(String dateTimestamp, String derivedTimeStampPattern) {
 
         if ("uuuuMMddHHmm,SX".equals(derivedTimeStampPattern) || "uuuuMMddHHmm.SX".equals(derivedTimeStampPattern)) {
             /*
@@ -188,7 +180,7 @@ public class LDAPUtil {
 
             dateTimestamp = String.format("%s%02d%s", base, seconds, zone);
             // Update the pattern to reflect the new format
-            derivedTimeStampPattern = dateTimestamp.contains(",") ? "uuuuMMddHHmmss,SX" : "uuuuMMddHHmmss.SX";
+            derivedTimeStampPattern = "uuuuMMddHHmmssX";
         }
 
         return OffsetDateTime.parse(dateTimestamp, DateTimeFormatter.ofPattern(derivedTimeStampPattern))
