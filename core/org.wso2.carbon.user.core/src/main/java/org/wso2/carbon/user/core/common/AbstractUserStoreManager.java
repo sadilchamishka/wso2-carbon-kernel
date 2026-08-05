@@ -13606,6 +13606,8 @@ public abstract class AbstractUserStoreManager implements PaginatedUserStoreMana
 
         if (rolesAndGroups != null && rolesAndGroups.size() > 0) {
             finalValues.put(rolesAndGroupsClaim, getMultiValuedString(rolesAndGroups));
+        } else {
+            finalValues.remove(rolesAndGroupsClaim);
         }
 
         if (isGroupsVsRolesSeparationImprovementsEnabled(realmConfig)) {
@@ -13619,10 +13621,14 @@ public abstract class AbstractUserStoreManager implements PaginatedUserStoreMana
 
             if (roles != null && roles.size() > 0) {
                 finalValues.put(rolesClaim, getMultiValuedString(roles));
+            } else {
+                finalValues.remove(rolesClaim);
             }
 
             if (groups != null && groups.size() > 0) {
                 finalValues.put(groupsClaim, getMultiValuedString(groups));
+            } else {
+                finalValues.remove(groupsClaim);
             }
         }
         return finalValues;
