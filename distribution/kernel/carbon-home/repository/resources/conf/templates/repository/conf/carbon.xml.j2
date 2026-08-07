@@ -870,6 +870,10 @@
     <!-- Configure password validity period for initially set password -->
     <DefaultPasswordValidityPeriod>{{password.default_validity_period}}</DefaultPasswordValidityPeriod>
 
+    <!-- Exclude the roles and groups claims from the user claims when the user is not assigned to any
+         role or group. When set to false, any previously resolved value for those claims is retained. -->
+    <SkipGroupRolesFromUserClaims>{{server.skip_group_roles_from_user_claims | default('true')}}</SkipGroupRolesFromUserClaims>
+
     <!-- Configure JCE provider -->
     {% if jce_provider.provider_name is defined %}
         <JCEProvider>{{jce_provider.provider_name}}</JCEProvider>

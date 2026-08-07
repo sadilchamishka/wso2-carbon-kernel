@@ -154,6 +154,7 @@ public final class ServerConstants {
     public static final String CONFIGURATION_CONTEXT = "CONFIGURATION_CONTEXT";
     public static final String STS_NAME = "wso2carbon-sts";
     public static final String DEFAULT_PASSWORD_VALIDITY_PERIOD = "DefaultPasswordValidityPeriod";
+    public static final String SKIP_GROUP_ROLES_FROM_USER_CLAIMS = "SkipGroupRolesFromUserClaims";
 
     public static final String JCE_PROVIDER = "JCEProvider";
     public static final String JCE_PROVIDER_BC = "BC";
