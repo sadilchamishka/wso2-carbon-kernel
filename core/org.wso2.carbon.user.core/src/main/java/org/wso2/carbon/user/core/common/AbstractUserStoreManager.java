@@ -9161,7 +9161,7 @@ public abstract class AbstractUserStoreManager implements PaginatedUserStoreMana
 
         if (rolesAndGroups != null && rolesAndGroups.length > 0) {
             finalValues.put(rolesAndGroupsClaim, getMultiValuedString(Arrays.asList(rolesAndGroups)));
-        } else {
+        } else if (isEmptyRolesAndGroupsClaimsSkipped()) {
             finalValues.remove(rolesAndGroupsClaim);
         }
 
@@ -9176,13 +9176,13 @@ public abstract class AbstractUserStoreManager implements PaginatedUserStoreMana
 
             if (roles != null && roles.length > 0) {
                 finalValues.put(rolesClaim, getMultiValuedString(Arrays.asList(roles)));
-            } else {
+            } else if (isEmptyRolesAndGroupsClaimsSkipped()) {
                 finalValues.remove(rolesClaim);
             }
 
             if (groups != null && groups.length > 0) {
                 finalValues.put(groupsClaim, getMultiValuedString(Arrays.asList(groups)));
-            } else {
+            } else if (isEmptyRolesAndGroupsClaimsSkipped()) {
                 finalValues.remove(groupsClaim);
             }
         }
@@ -13612,7 +13612,7 @@ public abstract class AbstractUserStoreManager implements PaginatedUserStoreMana
 
         if (rolesAndGroups != null && rolesAndGroups.size() > 0) {
             finalValues.put(rolesAndGroupsClaim, getMultiValuedString(rolesAndGroups));
-        } else {
+        } else if (isEmptyRolesAndGroupsClaimsSkipped()) {
             finalValues.remove(rolesAndGroupsClaim);
         }
 
@@ -13627,13 +13627,13 @@ public abstract class AbstractUserStoreManager implements PaginatedUserStoreMana
 
             if (roles != null && roles.size() > 0) {
                 finalValues.put(rolesClaim, getMultiValuedString(roles));
-            } else {
+            } else if (isEmptyRolesAndGroupsClaimsSkipped()) {
                 finalValues.remove(rolesClaim);
             }
 
             if (groups != null && groups.size() > 0) {
                 finalValues.put(groupsClaim, getMultiValuedString(groups));
-            } else {
+            } else if (isEmptyRolesAndGroupsClaimsSkipped()) {
                 finalValues.remove(groupsClaim);
             }
         }
@@ -20348,5 +20348,17 @@ public abstract class AbstractUserStoreManager implements PaginatedUserStoreMana
             addToUserNameCacheOnRead(user.getUserID(), user.getUsername(), user.getUserStoreDomain());
         }
         return userList;
+    }
+
+    /**
+     * Checks whether the roles and groups claims should be excluded from the user claims when the user is not
+     * assigned to any role or group. When disabled, any previously resolved value for those claims is retained.
+     *
+     * @return True if empty roles and groups claims should be excluded from the user claims.
+     */
+    private boolean isEmptyRolesAndGroupsClaimsSkipped() {
+
+        return Boolean.parseBoolean(ServerConfiguration.getInstance()
+                .getFirstProperty(ServerConstants.SKIP_GROUP_ROLES_FROM_USER_CLAIMS));
     }
 }
