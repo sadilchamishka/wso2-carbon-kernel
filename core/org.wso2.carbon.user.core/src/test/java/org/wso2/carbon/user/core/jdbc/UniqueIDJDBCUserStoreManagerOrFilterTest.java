@@ -38,6 +38,7 @@ import org.wso2.carbon.user.core.model.ExpressionCondition;
 import org.wso2.carbon.user.core.model.ExpressionOperation;
 import org.wso2.carbon.user.core.model.OperationalCondition;
 import org.wso2.carbon.user.core.model.OperationalOperation;
+import org.wso2.carbon.user.core.model.SqlBuilder;
 import org.wso2.carbon.user.core.util.DatabaseUtil;
 import org.wso2.carbon.utils.dbcreator.DatabaseCreator;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
@@ -209,6 +210,49 @@ public class UniqueIDJDBCUserStoreManagerOrFilterTest {
         Condition condition = or(usernameEquals("orUser1"),
                 or(usernameEquals("orUser2"), usernameEquals("orUser3")));
         assertEquals(userStoreManager.getUsersCount(condition, null, null, 10, 1, true), 3);
+    }
+
+    @Test
+    public void testOrQueryShapeForDefaultDatabase() throws Exception {
+
+        // The user store under test is case sensitive, hence the predicates carry no LOWER(..).
+        SqlBuilder sqlBuilder = buildOrQuery("h2");
+        assertEquals(sqlBuilder.getQuery(),
+                "SELECT U.UM_USER_ID, U.UM_USER_NAME FROM UM_USER U WHERE U.UM_TENANT_ID = ? AND ("
+                        + "U.UM_USER_NAME = ?"
+                        + " OR EXISTS (SELECT 1 FROM UM_USER_ATTRIBUTE UA WHERE UA.UM_USER_ID = U.UM_ID "
+                        + "AND UA.UM_TENANT_ID = ? AND UA.UM_PROFILE_ID = ? AND UA.UM_ATTR_NAME = ? "
+                        + "AND UA.UM_ATTR_VALUE = ?)"
+                        + " OR NOT EXISTS (SELECT 1 FROM UM_USER_ROLE UR INNER JOIN UM_ROLE R "
+                        + "ON R.UM_ID = UR.UM_ROLE_ID WHERE UR.UM_USER_ID = U.UM_ID AND UR.UM_TENANT_ID = ? "
+                        + "AND R.UM_TENANT_ID = ? AND R.UM_ROLE_NAME = ?)"
+                        + ") ORDER BY UM_USER_NAME ASC LIMIT ? OFFSET ?");
+        /*
+         * Tenant id, the username value, the four parameters of the claim sub query, the three parameters of the role
+         * sub query and the limit/offset pair.
+         */
+        assertEquals(sqlBuilder.getOrderedParameters().size(), 11);
+    }
+
+    @Test
+    public void testOrQueryIsPaginatedPerDatabaseType() throws Exception {
+
+        assertTrue(buildOrQuery("mssql").getQuery()
+                .endsWith(") ORDER BY UM_USER_NAME ASC OFFSET ? ROWS FETCH NEXT ? ROWS ONLY"));
+        assertTrue(buildOrQuery("oracle").getQuery()
+                .endsWith(") ORDER BY UM_USER_NAME) where rownum <= ?) WHERE  rnum > ?"));
+        assertTrue(buildOrQuery("db2").getQuery().endsWith(") AS p) WHERE rn BETWEEN ? AND ?"));
+    }
+
+    private SqlBuilder buildOrQuery(String dbType) throws UserStoreException {
+
+        List<ExpressionCondition> expressionConditions = Arrays.asList(
+                usernameEquals("orUser1"),
+                claimEquals(ATTRIBUTE_1, "alpha"),
+                new ExpressionCondition(ExpressionOperation.NE.toString(), ExpressionAttribute.ROLE.toString(),
+                        "orRole1"));
+        return ((UniqueIDJDBCUserStoreManager) userStoreManager)
+                .getQueryStringForOrOperation(expressionConditions, 10, 0, "default", dbType);
     }
 
     @Test
