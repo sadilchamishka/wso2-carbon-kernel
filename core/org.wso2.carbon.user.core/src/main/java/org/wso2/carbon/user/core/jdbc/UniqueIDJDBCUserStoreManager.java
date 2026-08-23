@@ -3250,6 +3250,10 @@ public class UniqueIDJDBCUserStoreManager extends JDBCUserStoreManager {
     private void updateProperties(Connection dbConnection, String userID, Map<String, String> properties,
                                   String profileName) throws UserStoreException {
 
+        if (properties == null || properties.isEmpty()) {
+            return;
+        }
+
         String type;
         try {
             type = DatabaseCreator.getDatabaseType(dbConnection);
@@ -3298,10 +3302,12 @@ public class UniqueIDJDBCUserStoreManager extends JDBCUserStoreManager {
                 }
             }
 
-            // Select and update lock the rows to be updated in a particular order before the actual update operation to
-            // prevent the deadlock scenario in issue https://github.com/wso2-enterprise/asgardeo-product/issues/21031.
-            // Currently, this issue is only reproduced in SQL Server.
-            if (isMSSQLDB(dbConnection)) {
+            /*
+             Lock all the user's attribute rows in one statement before writing any of them. Otherwise concurrent
+             batch updates of the same user can each hold a lock the other one still needs, and deadlock. The lock
+             hint is SQL Server syntax, and only SQL Server has been observed to deadlock here.
+            */
+            if (MSSQL.equalsIgnoreCase(type)) {
                 selectRowsForUpdate(dbConnection, userID);
             }
             int[] counts = prepStmt.executeBatch();
@@ -5052,9 +5058,9 @@ public class UniqueIDJDBCUserStoreManager extends JDBCUserStoreManager {
      *
      * @param dbConnection Database connection.
      * @param userID       User id of the user.
-     * @throws UserStoreException If an error occurred while executing statement.
+     * @throws SQLException If an error occurred while executing the statement.
      */
-    private void selectRowsForUpdate(Connection dbConnection, String userID) throws UserStoreException {
+    private void selectRowsForUpdate(Connection dbConnection, String userID) throws SQLException {
 
         String sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.SELECT_USER_PROPERTIES_WITH_ID_OPTIMIZED);
         try (PreparedStatement prepStmt = dbConnection.prepareStatement(sqlStmt)) {
@@ -5063,26 +5069,8 @@ public class UniqueIDJDBCUserStoreManager extends JDBCUserStoreManager {
             prepStmt.setInt(3, tenantId);
             prepStmt.executeQuery();
         } catch (SQLException e) {
-            String errorMessage = "Error while selecting rows for updating user attributes";
-            if (log.isDebugEnabled()) {
-                log.debug(errorMessage, e);
-            }
-            throw new UserStoreException(errorMessage, e);
-        }
-    }
-
-    /**
-     * Check if the DB is MSSQL.
-     *
-     * @return true if MSSQL, false otherwise.
-     * @throws UserStoreException if error occurred while getting database type.
-     */
-    private boolean isMSSQLDB(Connection dbConnection) throws UserStoreException {
-
-        try {
-            return MSSQL.equalsIgnoreCase(DatabaseCreator.getDatabaseType(dbConnection));
-        } catch (Exception e) {
-            throw new UserStoreException("Error while retrieving the DB type. ", e);
+            throw new SQLException("Error while locking the attribute rows of user : " + userID
+                    + " for update. Executed query is : " + sqlStmt, e);
         }
     }
 
