@@ -3250,6 +3250,10 @@ public class UniqueIDJDBCUserStoreManager extends JDBCUserStoreManager {
     private void updateProperties(Connection dbConnection, String userID, Map<String, String> properties,
                                   String profileName) throws UserStoreException {
 
+        if (properties == null || properties.isEmpty()) {
+            return;
+        }
+
         String type;
         try {
             type = DatabaseCreator.getDatabaseType(dbConnection);
@@ -3298,10 +3302,12 @@ public class UniqueIDJDBCUserStoreManager extends JDBCUserStoreManager {
                 }
             }
 
-            // Select and update lock the rows to be updated in a particular order before the actual update operation to
-            // prevent the deadlock scenario in issue https://github.com/wso2-enterprise/asgardeo-product/issues/21031.
-            // Currently, this issue is only reproduced in SQL Server.
-            if (isMSSQLDB(dbConnection)) {
+            /*
+             Lock all the user's attribute rows in one statement before writing any of them. Otherwise concurrent
+             batch updates of the same user can each hold a lock the other one still needs, and deadlock. The lock
+             hint is SQL Server syntax, and only SQL Server has been observed to deadlock here.
+            */
+            if (MSSQL.equalsIgnoreCase(type)) {
                 selectRowsForUpdate(dbConnection, userID);
             }
             int[] counts = prepStmt.executeBatch();
