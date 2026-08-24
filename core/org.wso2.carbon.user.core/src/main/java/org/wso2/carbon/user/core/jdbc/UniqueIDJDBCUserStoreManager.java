@@ -3283,6 +3283,10 @@ public class UniqueIDJDBCUserStoreManager extends JDBCUserStoreManager {
         String sqlStmt =
                 realmConfig.getUserStoreProperty(JDBCRealmConstants.UPDATE_USER_PROPERTY_WITH_ID + "-" + type);
         if (sqlStmt == null) {
+            sqlStmt = realmConfig
+                    .getUserStoreProperty(JDBCRealmConstants.UPDATE_USER_PROPERTY_WITH_ID_OPTIMIZED + "-" + type);
+        }
+        if (sqlStmt == null) {
             sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.UPDATE_USER_PROPERTY_WITH_ID_OPTIMIZED);
         }
         if (sqlStmt == null) {
