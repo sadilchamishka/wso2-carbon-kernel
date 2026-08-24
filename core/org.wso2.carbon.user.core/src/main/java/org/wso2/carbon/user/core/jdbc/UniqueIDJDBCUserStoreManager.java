@@ -5058,9 +5058,9 @@ public class UniqueIDJDBCUserStoreManager extends JDBCUserStoreManager {
      *
      * @param dbConnection Database connection.
      * @param userID       User id of the user.
-     * @throws SQLException If an error occurred while executing the statement.
+     * @throws UserStoreException If an error occurred while executing statement.
      */
-    private void selectRowsForUpdate(Connection dbConnection, String userID) throws SQLException {
+    private void selectRowsForUpdate(Connection dbConnection, String userID) throws UserStoreException {
 
         String sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.SELECT_USER_PROPERTIES_WITH_ID_OPTIMIZED);
         try (PreparedStatement prepStmt = dbConnection.prepareStatement(sqlStmt)) {
@@ -5069,8 +5069,26 @@ public class UniqueIDJDBCUserStoreManager extends JDBCUserStoreManager {
             prepStmt.setInt(3, tenantId);
             prepStmt.executeQuery();
         } catch (SQLException e) {
-            throw new SQLException("Error while locking the attribute rows of user : " + userID
-                    + " for update. Executed query is : " + sqlStmt, e);
+            String errorMessage = "Error while selecting rows for updating user attributes";
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage, e);
+            }
+            throw new UserStoreException(errorMessage, e);
+        }
+    }
+
+    /**
+     * Check if the DB is MSSQL.
+     *
+     * @return true if MSSQL, false otherwise.
+     * @throws UserStoreException if error occurred while getting database type.
+     */
+    private boolean isMSSQLDB(Connection dbConnection) throws UserStoreException {
+
+        try {
+            return MSSQL.equalsIgnoreCase(DatabaseCreator.getDatabaseType(dbConnection));
+        } catch (Exception e) {
+            throw new UserStoreException("Error while retrieving the DB type. ", e);
         }
     }
 
