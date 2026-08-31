@@ -206,7 +206,7 @@ public class DatabaseUtil {
         }
 
         if (StringUtils.isNotEmpty(realmConfig.getUserStoreProperty(JDBCRealmConstants.INITIAL_SIZE)) &&
-                StringUtils.isNumeric(JDBCRealmConstants.INITIAL_SIZE)) {
+                StringUtils.isNumeric(realmConfig.getUserStoreProperty(JDBCRealmConstants.INITIAL_SIZE))) {
             poolProperties.setInitialSize(Integer.parseInt(realmConfig.getUserStoreProperty(JDBCRealmConstants
                     .INITIAL_SIZE)));
         }
@@ -230,7 +230,8 @@ public class DatabaseUtil {
         }
 
         if (StringUtils.isNotEmpty(realmConfig.getUserStoreProperty(JDBCRealmConstants.NUM_TESTS_PER_EVICTION_RUN)) &&
-                StringUtils.isNumeric(JDBCRealmConstants.NUM_TESTS_PER_EVICTION_RUN)) {
+                StringUtils.isNumeric(realmConfig.getUserStoreProperty(
+                        JDBCRealmConstants.NUM_TESTS_PER_EVICTION_RUN))) {
             poolProperties.setNumTestsPerEvictionRun(Integer.parseInt(realmConfig.getUserStoreProperty(
                     JDBCRealmConstants.NUM_TESTS_PER_EVICTION_RUN)));
         }
@@ -249,7 +250,8 @@ public class DatabaseUtil {
         }
 
         if (StringUtils.isNotEmpty(realmConfig.getUserStoreProperty(JDBCRealmConstants.REMOVE_ABANDONED_TIMEOUT)) &&
-                StringUtils.isNumeric(JDBCRealmConstants.REMOVE_ABANDONED_TIMEOUT)) {
+                StringUtils.isNumeric(realmConfig.getUserStoreProperty(
+                        JDBCRealmConstants.REMOVE_ABANDONED_TIMEOUT))) {
             poolProperties.setRemoveAbandonedTimeout(Integer.parseInt(realmConfig.getUserStoreProperty(
                     JDBCRealmConstants.REMOVE_ABANDONED_TIMEOUT)));
         }
@@ -288,7 +290,9 @@ public class DatabaseUtil {
                     (JDBCRealmConstants.FAIR_QUEUE)));
         }
 
-        if (StringUtils.isNumeric(JDBCRealmConstants.ABANDON_WHEN_PERCENTAGE_FULL)) {
+        if (StringUtils.isNotEmpty(realmConfig.getUserStoreProperty(JDBCRealmConstants.ABANDON_WHEN_PERCENTAGE_FULL))
+                && StringUtils.isNumeric(realmConfig.getUserStoreProperty(
+                        JDBCRealmConstants.ABANDON_WHEN_PERCENTAGE_FULL))) {
             poolProperties.setAbandonWhenPercentageFull(Integer.parseInt(realmConfig.getUserStoreProperty(
                     JDBCRealmConstants.ABANDON_WHEN_PERCENTAGE_FULL)));
         }
@@ -305,13 +309,14 @@ public class DatabaseUtil {
         }
 
         if (StringUtils.isNotEmpty(realmConfig.getUserStoreProperty(JDBCRealmConstants.SUSPECT_TIMEOUT)) &&
-                StringUtils.isNumeric(JDBCRealmConstants.SUSPECT_TIMEOUT)) {
+                StringUtils.isNumeric(realmConfig.getUserStoreProperty(JDBCRealmConstants.SUSPECT_TIMEOUT))) {
             poolProperties.setSuspectTimeout(Integer.parseInt(realmConfig.getUserStoreProperty(JDBCRealmConstants
                     .SUSPECT_TIMEOUT)));
         }
 
         if (StringUtils.isNotEmpty(realmConfig.getUserStoreProperty(JDBCRealmConstants.VALIDATION_QUERY_TIMEOUT))
-                && StringUtils.isNumeric(JDBCRealmConstants.VALIDATION_QUERY_TIMEOUT)) {
+                && StringUtils.isNumeric(realmConfig.getUserStoreProperty(
+                        JDBCRealmConstants.VALIDATION_QUERY_TIMEOUT))) {
             poolProperties.setValidationQueryTimeout(Integer.parseInt(realmConfig.getUserStoreProperty(
                     JDBCRealmConstants.VALIDATION_QUERY_TIMEOUT)));
         }
@@ -438,7 +443,7 @@ public class DatabaseUtil {
         }
 
         if (StringUtils.isNotEmpty(realmConfig.getRealmProperty(JDBCRealmConstants.INITIAL_SIZE)) &&
-                StringUtils.isNumeric(JDBCRealmConstants.INITIAL_SIZE)) {
+                StringUtils.isNumeric(realmConfig.getRealmProperty(JDBCRealmConstants.INITIAL_SIZE))) {
             poolProperties.setInitialSize(Integer.parseInt(realmConfig.getRealmProperty(JDBCRealmConstants
                     .INITIAL_SIZE)));
         }
@@ -462,7 +467,8 @@ public class DatabaseUtil {
         }
 
         if (StringUtils.isNotEmpty(realmConfig.getRealmProperty(JDBCRealmConstants.NUM_TESTS_PER_EVICTION_RUN)) &&
-                StringUtils.isNumeric(JDBCRealmConstants.NUM_TESTS_PER_EVICTION_RUN)) {
+                StringUtils.isNumeric(realmConfig.getRealmProperty(
+                        JDBCRealmConstants.NUM_TESTS_PER_EVICTION_RUN))) {
             poolProperties.setNumTestsPerEvictionRun(Integer.parseInt(realmConfig.getRealmProperty(
                     JDBCRealmConstants.NUM_TESTS_PER_EVICTION_RUN)));
         }
@@ -481,7 +487,8 @@ public class DatabaseUtil {
         }
 
         if (StringUtils.isNotEmpty(realmConfig.getRealmProperty(JDBCRealmConstants.REMOVE_ABANDONED_TIMEOUT)) &&
-                StringUtils.isNumeric(JDBCRealmConstants.REMOVE_ABANDONED_TIMEOUT)) {
+                StringUtils.isNumeric(realmConfig.getRealmProperty(
+                        JDBCRealmConstants.REMOVE_ABANDONED_TIMEOUT))) {
             poolProperties.setRemoveAbandonedTimeout(Integer.parseInt(realmConfig.getRealmProperty(
                     JDBCRealmConstants.REMOVE_ABANDONED_TIMEOUT)));
         }
@@ -515,13 +522,15 @@ public class DatabaseUtil {
                     (JDBCRealmConstants.FAIR_QUEUE)));
         }
 
-        if (StringUtils.isNumeric(JDBCRealmConstants.ABANDON_WHEN_PERCENTAGE_FULL)) {
+        if (StringUtils.isNotEmpty(realmConfig.getRealmProperty(JDBCRealmConstants.ABANDON_WHEN_PERCENTAGE_FULL))
+                && StringUtils.isNumeric(realmConfig.getRealmProperty(
+                        JDBCRealmConstants.ABANDON_WHEN_PERCENTAGE_FULL))) {
             poolProperties.setAbandonWhenPercentageFull(Integer.parseInt(realmConfig.getRealmProperty(
                     JDBCRealmConstants.ABANDON_WHEN_PERCENTAGE_FULL)));
         }
 
         if (StringUtils.isNotEmpty(realmConfig.getRealmProperty(JDBCRealmConstants.MAX_AGE)) &&
-                StringUtils.isNumeric(JDBCRealmConstants.MAX_AGE)) {
+                StringUtils.isNumeric(realmConfig.getRealmProperty(JDBCRealmConstants.MAX_AGE))) {
             poolProperties.setMaxAge(Integer.parseInt(realmConfig.getRealmProperty(JDBCRealmConstants.MAX_AGE)));
         }
 
@@ -532,13 +541,14 @@ public class DatabaseUtil {
         }
 
         if (StringUtils.isNotEmpty(realmConfig.getRealmProperty(JDBCRealmConstants.SUSPECT_TIMEOUT)) &&
-                StringUtils.isNumeric(JDBCRealmConstants.SUSPECT_TIMEOUT)) {
+                StringUtils.isNumeric(realmConfig.getRealmProperty(JDBCRealmConstants.SUSPECT_TIMEOUT))) {
             poolProperties.setSuspectTimeout(Integer.parseInt(realmConfig.getRealmProperty(JDBCRealmConstants
                     .SUSPECT_TIMEOUT)));
         }
 
         if (StringUtils.isNotEmpty(realmConfig.getRealmProperty(JDBCRealmConstants.VALIDATION_QUERY_TIMEOUT))
-                && StringUtils.isNumeric(JDBCRealmConstants.VALIDATION_QUERY_TIMEOUT)) {
+                && StringUtils.isNumeric(realmConfig.getRealmProperty(
+                        JDBCRealmConstants.VALIDATION_QUERY_TIMEOUT))) {
             poolProperties.setValidationQueryTimeout(Integer.parseInt(realmConfig.getRealmProperty(
                     JDBCRealmConstants.VALIDATION_QUERY_TIMEOUT)));
         }
